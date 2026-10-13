@@ -61,9 +61,9 @@ The node uses the DecisionNode Python SDK, which is installed with pip:
 
 ```sh
 # Jazzy (Ubuntu 24.04)
-python3 -m pip install --break-system-packages "bynn-decisionnode>=0.3.2,<0.4"
+python3 -m pip install --user --break-system-packages "bynn-decisionnode>=0.3.2,<0.4"
 # Humble (Ubuntu 22.04)
-python3 -m pip install "bynn-decisionnode>=0.3.2,<0.4"
+python3 -m pip install --user "bynn-decisionnode>=0.3.2,<0.4"
 ```
 
 Then:

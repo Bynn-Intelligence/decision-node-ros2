@@ -35,13 +35,15 @@ jobs:
         with:
           required-ros-distributions: ${{ matrix.distro }}
 
-      # The DecisionNode Python SDK has no rosdep key yet, so it is installed from PyPI.
+      # The DecisionNode Python SDK has no rosdep key yet, so it is installed from PyPI,
+      # for the user, so pip never replaces a package the system installed.
       - name: Install the DecisionNode Python SDK
         env:
           PIP_BREAK_SYSTEM_PACKAGES: "1"
-        run: sudo -E python3 -m pip install "bynn-decisionnode>=0.3.2,<0.4"
+        run: python3 -m pip install --user "bynn-decisionnode>=0.3.2,<0.4"
 
       - uses: ros-tooling/action-ros-ci@3a640b10f09b756dabe556dac5413aba369f71b0 # 0.4.8
         with:
           target-ros2-distro: ${{ matrix.distro }}
           package-name: decisionnode_msgs decisionnode_ros
+          import-token: ${{ github.token }}
