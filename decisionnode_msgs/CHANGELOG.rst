@@ -2,8 +2,8 @@
 Changelog for package decisionnode_msgs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.1.1 (2026-10-13)
+------------------
 * Rolling is built and tested beside Jazzy and Humble.
 
 0.1.0 (2026-10-13)

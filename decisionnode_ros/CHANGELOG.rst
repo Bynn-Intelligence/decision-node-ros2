@@ -2,8 +2,8 @@
 Changelog for package decisionnode_ros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.1.1 (2026-10-13)
+------------------
 * A node whose start fails (no API key, a bad question) shuts down cleanly on newer rclpy, which destroys such a node with its context.
 * Where the DecisionNode Python SDK is not installed, the tests that need it are skipped without failing collection on any distribution.
 * Rolling is built and tested beside Jazzy and Humble.
