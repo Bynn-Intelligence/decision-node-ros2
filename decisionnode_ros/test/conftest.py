@@ -6,6 +6,13 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 
+try:
+    import decisionnode  # noqa: F401
+except ImportError:
+    # The DecisionNode Python SDK is installed with pip, which rosdep does not do: where
+    # it is missing, only the tests that need no SDK run.
+    collect_ignore = ["test_engine.py", "test_node.py", "test_questions.py"]
+
 ANSWER = {
     "model": "decisionnode-flash-0.9.0-rc1",
     "answers": {
