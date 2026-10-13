@@ -9,7 +9,7 @@ box, each with its confidence. This repository brings it to ROS 2 as two package
 | `decisionnode_ros` | An `rclpy` node. It reads frames from an image topic, asks your questions at a rate you set, and publishes each set of answers. |
 | `decisionnode_msgs` | The `Decision` and `Answer` messages and the `DecideOnce` service. |
 
-Supported: ROS 2 Jazzy (Ubuntu 24.04) and Humble (Ubuntu 22.04), on amd64 and arm64.
+Supported: ROS 2 Jazzy (Ubuntu 24.04), Humble (Ubuntu 22.04) and Rolling, on amd64 and arm64.
 
 ## Safety: decisions, never the controller
 
@@ -44,7 +44,7 @@ pattern.
 
 ## Quickstart (5 minutes)
 
-You need ROS 2 Jazzy or Humble and a DecisionNode API key from the
+You need ROS 2 Jazzy, Humble or Rolling and a DecisionNode API key from the
 [console](https://decisionnode.com/console).
 
 **1. Build the packages.**
@@ -60,7 +60,7 @@ rosdep install --from-paths src --ignore-src -y
 The node uses the DecisionNode Python SDK, which is installed with pip:
 
 ```sh
-# Jazzy (Ubuntu 24.04)
+# Jazzy and Rolling (Ubuntu 24.04 and later)
 python3 -m pip install --user --break-system-packages "bynn-decisionnode>=0.3.2,<0.4"
 # Humble (Ubuntu 22.04)
 python3 -m pip install --user "bynn-decisionnode>=0.3.2,<0.4"

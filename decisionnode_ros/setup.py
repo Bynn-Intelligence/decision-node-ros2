@@ -20,6 +20,6 @@ setup(
     maintainer_email="hello@bynn.com",
     description="DecisionNode for ROS 2. DecisionNode is a decision engine.",
     license="MIT",
-    tests_require=["pytest"],
+    extras_require={"test": ["pytest"]},
     entry_points={"console_scripts": ["decisionnode = decisionnode_ros.node:main"]},
 )

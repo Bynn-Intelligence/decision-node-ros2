@@ -29,6 +29,8 @@ jobs:
           - { distro: humble, runner: ubuntu-22.04-arm }
           - { distro: jazzy, runner: ubuntu-24.04 }
           - { distro: jazzy, runner: ubuntu-24.04-arm }
+          - { distro: rolling, runner: ubuntu-24.04 }
+          - { distro: rolling, runner: ubuntu-24.04-arm }
     steps:
       - uses: ros-tooling/setup-ros@649ef6bcd696da05bc27ceb3fab69d810c0daeab # 0.7.19
         with:

@@ -1,6 +1,16 @@
 import pytest
 
-from decisionnode_ros.questions import QuestionError, parse_questions
+# The DecisionNode Python SDK is installed with pip, which rosdep does not do: where
+# it is missing (as on a build from rosdep keys alone), these tests are skipped. Nothing
+# here raises on import, since some test runners import every module to collect it.
+try:
+    from decisionnode_ros.questions import QuestionError, parse_questions
+except ImportError:
+    HAVE_SDK = False
+else:
+    HAVE_SDK = True
+
+pytestmark = pytest.mark.skipif(not HAVE_SDK, reason="the DecisionNode Python SDK is not installed")
 
 
 def test_questions_in_order_and_built():

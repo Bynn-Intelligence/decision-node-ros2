@@ -63,6 +63,12 @@ class DecisionNodeRos(Node):
             automatically_declare_parameters_from_overrides=True,
             **kwargs,
         )
+        # Set before anything here can raise: rclpy destroys a node whose constructor
+        # failed when its context shuts down, and destroy_node reads these.
+        self._stopping = threading.Event()
+        self._session: Any = None
+        self._threads: List[threading.Thread] = []
+        self.gate: Optional[FrameGate] = None
         self.p = {name: self._param(name, default) for name, default in DEFAULTS.items()}
         self.p["boosters"] = [b for b in self.p["boosters"] if b]
         prefixed = self.get_parameters_by_prefix("questions")
@@ -83,8 +89,6 @@ class DecisionNodeRos(Node):
         self._latest: Optional[_Frame] = None
         self._state: Any = None
         self._lock = threading.Lock()
-        self._stopping = threading.Event()
-        self._session: Any = None
         self._seq_headers: Dict[int, Any] = {}
 
         kind = CompressedImage if self.p["compressed"] else Image
@@ -271,7 +275,8 @@ class DecisionNodeRos(Node):
 
     def destroy_node(self) -> bool:
         self._stopping.set()
-        self.gate.close()
+        if self.gate is not None:
+            self.gate.close()
         if self._session is not None:
             try:
                 self._session.close()

@@ -1,12 +1,24 @@
 import base64
 import math
 
-import decisionnode as dn
 import pytest
 
-from decisionnode_ros.engine import ApiKeyError, DecisionEngine, read_api_key
-from decisionnode_ros.images import raw_to_jpeg
-from decisionnode_ros.questions import parse_questions
+# The DecisionNode Python SDK is installed with pip, which rosdep does not do: where
+# it is missing (as on a build from rosdep keys alone), these tests are skipped. Nothing
+# here raises on import, since some test runners import every module to collect it.
+try:
+    import decisionnode as dn
+
+    from decisionnode_ros.engine import ApiKeyError, DecisionEngine, read_api_key
+    from decisionnode_ros.images import raw_to_jpeg
+    from decisionnode_ros.questions import parse_questions
+except ImportError:
+    HAVE_SDK = False
+else:
+    HAVE_SDK = True
+    FRAME = raw_to_jpeg("rgb8", 8, 8, 24, b"\x80" * 192)
+
+pytestmark = pytest.mark.skipif(not HAVE_SDK, reason="the DecisionNode Python SDK is not installed")
 
 PARAMS = {
     "ids": ["person", "hazard", "crowd", "door"],
@@ -15,7 +27,6 @@ PARAMS = {
     "crowd.type": "number", "crowd.instructions": "How many people?", "crowd.min": 0, "crowd.max": 50,
     "door.type": "box", "door.instructions": "The open door.",
 }
-FRAME = raw_to_jpeg("rgb8", 8, 8, 24, b"\x80" * 192)
 
 
 def engine(api, **kw):

@@ -1,22 +1,32 @@
-"""The node itself, over ROS, against the mock API. Skipped where rclpy is not installed."""
+"""The node itself, over ROS, against the mock API. Skipped where rclpy or the SDK is not installed."""
 
 import threading
 import time
 
 import pytest
 
-rclpy = pytest.importorskip("rclpy")
+# The DecisionNode Python SDK is installed with pip, which rosdep does not do: where
+# it or rclpy is missing (as on a build from rosdep keys alone), these tests are
+# skipped. Nothing here raises on import, since some test runners import every module
+# to collect it.
+try:
+    import decisionnode  # noqa: F401
+    import rclpy
+    from rclpy.executors import MultiThreadedExecutor
+    from rclpy.parameter import Parameter
+    from sensor_msgs.msg import CompressedImage
 
-from rclpy.executors import MultiThreadedExecutor  # noqa: E402
-from rclpy.parameter import Parameter  # noqa: E402
-from sensor_msgs.msg import CompressedImage  # noqa: E402
+    from decisionnode_msgs.msg import Decision
+    from decisionnode_msgs.srv import DecideOnce
+    from decisionnode_ros.images import raw_to_jpeg
+    from decisionnode_ros.node import DecisionNodeRos
+except ImportError:
+    HAVE_ROS_AND_SDK = False
+else:
+    HAVE_ROS_AND_SDK = True
+    FRAME = raw_to_jpeg("rgb8", 8, 8, 24, b"\x80" * 192)
 
-from decisionnode_msgs.msg import Decision  # noqa: E402
-from decisionnode_msgs.srv import DecideOnce  # noqa: E402
-from decisionnode_ros.images import raw_to_jpeg  # noqa: E402
-from decisionnode_ros.node import DecisionNodeRos  # noqa: E402
-
-FRAME = raw_to_jpeg("rgb8", 8, 8, 24, b"\x80" * 192)
+pytestmark = pytest.mark.skipif(not HAVE_ROS_AND_SDK, reason="rclpy or the DecisionNode Python SDK is not installed")
 
 
 @pytest.fixture
