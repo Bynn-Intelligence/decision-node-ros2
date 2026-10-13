@@ -32,9 +32,11 @@ jobs:
           - { distro: rolling, runner: ubuntu-24.04 }
           - { distro: rolling, runner: ubuntu-24.04-arm }
     steps:
+      # The Rolling image comes with ROS's testing apt source, which setup-ros keeps.
       - uses: ros-tooling/setup-ros@649ef6bcd696da05bc27ceb3fab69d810c0daeab # 0.7.19
         with:
           required-ros-distributions: ${{ matrix.distro }}
+          use-ros2-testing: ${{ matrix.distro == 'rolling' }}
 
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
