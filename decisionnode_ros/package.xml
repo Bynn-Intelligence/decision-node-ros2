@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>decisionnode_ros</name>
+  <version>0.1.0</version>
+  <description>DecisionNode for ROS 2. DecisionNode is a decision engine: this node asks it typed questions about the frames on an image topic and publishes the answers as decisionnode_msgs/Decision.</description>
+  <maintainer email="hello@bynn.com">Bynn Intelligence, Inc.</maintainer>
+  <license>MIT</license>
+  <url type="website">https://decisionnode.com</url>
+  <url type="repository">https://github.com/Bynn-Intelligence/decision-node-ros2</url>
+  <author>Bynn Intelligence, Inc.</author>
+
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>decisionnode_msgs</exec_depend>
+  <exec_depend>python3-pil</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>ament_index_python</exec_depend>
+  <!-- The DecisionNode Python SDK (PyPI: bynn-decisionnode) has no rosdep key yet:
+       install it with pip, as the README says. -->
+
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

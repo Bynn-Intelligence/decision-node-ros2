@@ -1,0 +1,33 @@
+# Example parameters for the decisionnode node. Copy it, then edit the questions.
+#
+# The API key is never a parameter's value: set DECISIONNODE_API_KEY in the node's
+# environment, or api_key_file to a file that holds the key (mode 600).
+decisionnode:
+  ros__parameters:
+    image_topic: /image_raw            # sensor_msgs/Image, or CompressedImage with compressed: true
+    compressed: false
+    state_topic: ""                    # optional std_msgs/String holding JSON
+    decision_topic: decision
+    model: decisionnode-flash          # decisionnode-moe for the most accurate answers
+    boosters: [""]                     # for example [age]
+    max_rate_hz: 1.0                   # at most one decision a second
+    max_in_flight: 1                   # requests running at once
+    timeout_s: 10.0
+    jpeg_quality: 85
+    session_mode: false                # true: one live session, frames answered as they stream
+    api_key_file: ""
+
+    questions:
+      ids: [person, hazard, crowd]
+      person:
+        type: truth
+        instructions: Is there a person in the frame?
+      hazard:
+        type: choice
+        instructions: What hazard is in view, if any?
+        options: [none, fire, smoke, water, debris]
+      crowd:
+        type: number
+        instructions: How many people are in the frame?
+        min: 0
+        max: 50

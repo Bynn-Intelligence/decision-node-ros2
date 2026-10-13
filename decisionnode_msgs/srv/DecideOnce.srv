@@ -1,0 +1,8 @@
+# Ask the configured questions once. Give one image, raw or compressed; with neither,
+# the node answers about the latest frame from its image topic.
+
+sensor_msgs/Image image
+sensor_msgs/CompressedImage compressed_image
+string state_json          # optional; else the latest message on the state topic
+---
+decisionnode_msgs/Decision decision
