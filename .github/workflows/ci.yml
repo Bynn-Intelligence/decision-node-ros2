@@ -17,6 +17,9 @@ jobs:
   build-and-test:
     name: ${{ matrix.distro }} on ${{ matrix.runner }}
     runs-on: ${{ matrix.runner }}
+    # The official ROS image for the distribution, the same on amd64 and arm64.
+    container:
+      image: ros:${{ matrix.distro }}-ros-base
     timeout-minutes: 45
     strategy:
       fail-fast: false
@@ -27,13 +30,13 @@ jobs:
           - { distro: jazzy, runner: ubuntu-24.04 }
           - { distro: jazzy, runner: ubuntu-24.04-arm }
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-        with:
-          persist-credentials: false
-
       - uses: ros-tooling/setup-ros@649ef6bcd696da05bc27ceb3fab69d810c0daeab # 0.7.19
         with:
           required-ros-distributions: ${{ matrix.distro }}
+
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
 
       # The DecisionNode Python SDK has no rosdep key yet, so it is installed from PyPI,
       # for the user, so pip never replaces a package the system installed.
