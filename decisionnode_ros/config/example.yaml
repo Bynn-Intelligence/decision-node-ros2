@@ -9,7 +9,10 @@ decisionnode:
     state_topic: ""                    # optional std_msgs/String holding JSON
     decision_topic: decision
     model: decisionnode-flash          # decisionnode-moe for the most accurate answers
-    boosters: [""]                     # for example [age]
+    boosters: [""]                     # for example [bynn_depth], or a JSON object for a booster
+                                       # with settings, such as
+                                       # '{"name": "bynn_segment", "options": {"prompt": "purple gate"}}'
+                                       # (see the README; not with session_mode)
     max_rate_hz: 1.0                   # at most one decision a second
     max_in_flight: 1                   # requests running at once
     timeout_s: 10.0

@@ -2,6 +2,13 @@
 Changelog for package decisionnode_ros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Boosters with settings: an entry of ``boosters`` may be a JSON object in the API's form, such as ``{"name": "bynn_segment", "options": {"prompt": ["purple gate"]}}``, beside a booster's name.
+* The boosters' readings are published in ``Decision.evidence_json``, exactly as the API sent them.
+* The README shows Depth Vision (``bynn_depth``) and Segment Vision (``bynn_segment``) for robots and drones.
+* ``boosters`` with ``session_mode`` refuse to start: a live session takes no boosters.
+
 0.1.1 (2026-10-13)
 ------------------
 * A node whose start fails (no API key, a bad question) shuts down cleanly on newer rclpy, which destroys such a node with its context.

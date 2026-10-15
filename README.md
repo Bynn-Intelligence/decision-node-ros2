@@ -2,7 +2,9 @@
 
 DecisionNode is a decision engine. You ask it questions about what a camera sees, and it
 returns typed answers: true or false, one of your options, a score, a number, a point or a
-box, each with its confidence. This repository brings it to ROS 2 as two packages:
+box, each with its confidence. Boosters add readings made for robots and drones: how far
+away things are, and where the things you name are. This repository brings it to ROS 2 as
+two packages:
 
 | Package | What it is |
 |---|---|
@@ -147,6 +149,72 @@ With `max` above 1, `place` holds every point or box one after another, `count` 
 many, and `place_confidence` holds one confidence each. A value the answer does not carry
 is `NaN`, `0` or empty. `raw_json` holds the answer exactly as the API sent it.
 
+## Boosters for robots and drones
+
+Boosters are specialist models that read the frame before the model answers. Their
+readings are evidence the model weighs, and they come back in `evidence_json`. Two are made
+for machines that move:
+
+- **Depth Vision** (`bynn_depth`): distances in meters. `ahead` is the nearest obstacle
+  straight ahead (the middle third of the frame, the floor left out; `null` when there is
+  none), `directions` the same in 7 vertical strips from left to right, `ground` whether a
+  floor was found and left out, and `grid` a `grid_size` by `grid_size` grid of the whole
+  frame (2 to 16, default 8), with `depth_min`, `depth_max` and `depth_median`.
+- **Segment Vision** (`bynn_segment`): finds what its `prompt` names, one phrase or a list
+  of 1 to 4. Each match in `instances` has its `label`, `score`, `box`, `polygon`, `area`,
+  `centroid`, `opening` (the hole of a gate, doorway or ring, else `null`), and with depth on
+  (the default) its distance (`depth`) and size (`size_m`) in meters. Coordinates are
+  fractions of the frame from its top left. Descriptive phrases ("orange H landing pad",
+  "purple octagonal frame on a pole") match better than one word. Its other options:
+  `max_instances` (1 to 16, default 8), `min_score` (0 to 1, default 0.25),
+  `polygon_points` (3 to 64, default 24) and `depth` (default `true`).
+
+**Their distances and sizes are estimates from one picture, for decisions and planning,
+never a safety stop.** A robot or a drone keeps stereo cameras, LiDAR or another certified
+sensor for that, as the safety section above requires.
+
+List a booster by name, or, for one with settings, as a JSON object in a string:
+
+```yaml
+decisionnode:
+  ros__parameters:
+    image_topic: /camera/image_raw
+    max_rate_hz: 2.0
+    boosters:
+      - bynn_depth
+      - '{"name": "bynn_segment", "options": {"prompt": ["purple gate", "orange H landing pad"]}}'
+    questions:
+      ids: [clear, gate]
+      clear:
+        type: truth
+        instructions: Is the path straight ahead clear for at least 2 meters?
+      gate:
+        type: point
+        instructions: The centre of the opening of the purple gate.
+        units: normalized
+```
+
+Act on the answers; read the readings when you want the numbers themselves:
+
+```python
+import json
+
+def on_decision(msg):
+    if not msg.ok:
+        return
+    evidence = json.loads(msg.evidence_json or "{}")
+    depth = (evidence.get("bynn_depth") or {}).get("results") or [{}]
+    ahead = depth[0].get("ahead")  # meters, or None when nothing is ahead
+    segment = (evidence.get("bynn_segment") or {}).get("results") or [{}]
+    for match in segment[0].get("instances", []):
+        print(match["label"], match["score"], match["centroid"], match.get("depth"))
+```
+
+A booster reads every frame the node sends, and each frame it reads is one booster call,
+so `max_rate_hz` sets how many you pay for. A live session (`session_mode`) takes no
+boosters: the node refuses to start with both. Every booster is listed in the
+[boosters documentation](https://decisionnode.com/docs/concepts/boosters).
+
 ## Parameters
 
 | Parameter | Default | Meaning |
@@ -156,7 +224,7 @@ is `NaN`, `0` or empty. `raw_json` holds the answer exactly as the API sent it.
 | `state_topic` | empty | An optional `std_msgs/String` topic holding JSON, sent with every frame as the state (speed, mode, what the robot is doing). |
 | `decision_topic` | `decision` | Where decisions are published. |
 | `model` | `decisionnode-flash` | The model to ask. |
-| `boosters` | none | Boosters to add, for example `[age]`. |
+| `boosters` | none | Boosters to add, each a name (`bynn_depth`) or a JSON object for one with settings. See [Boosters](#boosters-for-robots-and-drones). |
 | `max_rate_hz` | `1.0` | The most decisions a second. |
 | `max_in_flight` | `1` | Requests running at once. |
 | `timeout_s` | `10.0` | The time one request may take. |
@@ -194,6 +262,7 @@ key the node refuses to start.
 | `model` | The model that answered. |
 | `latency_ms` | The time the decision took. |
 | `cost_usd` | What it cost, `NaN` when not sent. |
+| `evidence_json` | The boosters' readings exactly as the API sent them, as JSON; empty when no booster is set. |
 | `error_type`, `error_message` | Why there are no answers, when `ok` is `false`. |
 | `frames_dropped` | Frames replaced by newer ones before this one was sent. |
 

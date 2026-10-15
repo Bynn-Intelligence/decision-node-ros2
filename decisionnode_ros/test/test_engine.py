@@ -1,4 +1,5 @@
 import base64
+import json
 import math
 
 import pytest
@@ -70,6 +71,32 @@ def test_several_places_are_flattened(api):
     door = outcome.answers[3]
     assert door.count == 2 and door.place == [1, 2, 3, 4, 5, 6, 7, 8] and door.place_confidence == [0.7, 0.6]
     assert outcome.answers[0].type == "unknown"  # an answer the API did not send
+
+
+DEPTH = {"image": "camera", "ahead": 3.21, "directions": [5.12, 4.03, None, 2.81, 6.02, 7.15, 9.33], "ground": True,
+         "grid_rows": 2, "grid_cols": 2, "grid": [[9.1, 8.7], [3.4, 2.9]], "depth_min": 1.01, "depth_max": 14.98,
+         "depth_median": 4.37, "width": 8, "height": 8}
+SEGMENT = {"image": "camera", "width": 8, "height": 8, "prompts": ["purple gate"], "instances": [],
+           "depth_source": "bynn_depth", "assumed_hfov_deg": 65}
+
+
+def test_booster_settings_are_sent_and_their_readings_come_back(api):
+    evidence = {
+        "bynn_depth": {"version": "bynn_depth-v1", "status": "ok", "latency_ms": 41, "billed_calls": 1, "results": [DEPTH]},
+        "bynn_segment": {"version": "bynn_segment-v1", "status": "ok", "latency_ms": 88, "billed_calls": 1, "results": [SEGMENT]},
+    }
+    api.body = dict(api.body, evidence=evidence)
+    boosters = ["bynn_depth", {"name": "bynn_segment", "options": {"prompt": ["purple gate"], "max_instances": 2}}]
+    outcome = engine(api, boosters=boosters).decide(FRAME)
+    assert api.requests[0]["body"]["boosters"] == boosters
+    assert outcome.ok and json.loads(outcome.evidence_json) == evidence
+    assert list(json.loads(outcome.evidence_json)) == ["bynn_depth", "bynn_segment"]  # the request's order
+
+
+def test_without_boosters_there_is_no_evidence(api):
+    outcome = engine(api).decide(FRAME)
+    assert "boosters" not in api.requests[0]["body"]
+    assert outcome.evidence_json == ""
 
 
 def test_an_api_error_is_an_outcome_not_an_exception(api):

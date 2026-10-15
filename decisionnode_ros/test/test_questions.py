@@ -4,7 +4,7 @@ import pytest
 # it is missing (as on a build from rosdep keys alone), these tests are skipped. Nothing
 # here raises on import, since some test runners import every module to collect it.
 try:
-    from decisionnode_ros.questions import QuestionError, parse_questions
+    from decisionnode_ros.questions import BoosterError, QuestionError, parse_boosters, parse_questions
 except ImportError:
     HAVE_SDK = False
 else:
@@ -39,3 +39,23 @@ def test_questions_in_order_and_built():
 def test_bad_questions_are_refused(params, words):
     with pytest.raises(QuestionError, match=words):
         parse_questions(params)
+
+
+def test_boosters_by_name_and_with_settings():
+    entries = ["", "bynn_depth", ' {"name": "bynn_segment", "options": {"prompt": ["purple gate", "landing pad"]}} ', "age"]
+    assert parse_boosters(entries) == [
+        "bynn_depth",
+        {"name": "bynn_segment", "options": {"prompt": ["purple gate", "landing pad"]}},
+        "age",
+    ]
+    assert parse_boosters([""]) == []
+
+
+@pytest.mark.parametrize("entry, words", [
+    ('{"name": "bynn_segment", ', "not a JSON object"),
+    ('{"options": {"prompt": "gate"}}', 'needs a "name"'),
+    ('{"name": ""}', 'needs a "name"'),
+])
+def test_bad_boosters_are_refused(entry, words):
+    with pytest.raises(BoosterError, match=words):
+        parse_boosters([entry])

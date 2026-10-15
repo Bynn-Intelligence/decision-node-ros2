@@ -71,6 +71,7 @@ class Outcome:
     model: str = ""
     latency_ms: float = NAN
     cost_usd: float = NAN
+    evidence_json: str = ""
     error_type: str = ""
     error_message: str = ""
 
@@ -128,7 +129,7 @@ class DecisionEngine:
         ids: Sequence[str],
         questions: Mapping[str, Any],
         model: Optional[str] = None,
-        boosters: Sequence[str] = (),
+        boosters: Sequence[Any] = (),
         image_id: str = "camera",
     ) -> None:
         self.client = client
@@ -154,6 +155,7 @@ def decision_outcome(decision: Any, ids: Sequence[str]) -> Outcome:
     raw = decision.raw if isinstance(getattr(decision, "raw", None), Mapping) else {}
     answers = raw.get("answers") if isinstance(raw.get("answers"), Mapping) else {}
     cost = (raw.get("usage") or {}).get("cost") if isinstance(raw.get("usage"), Mapping) else None
+    evidence = raw.get("evidence")
     return Outcome(
         ok=True,
         answers=[answer_out(qid, answers.get(qid)) for qid in ids],
@@ -161,6 +163,7 @@ def decision_outcome(decision: Any, ids: Sequence[str]) -> Outcome:
         model=decision.model or "",
         latency_ms=_num(decision.latency_ms),
         cost_usd=_num(cost.get("usd")) if isinstance(cost, Mapping) else NAN,
+        evidence_json=json.dumps(evidence, ensure_ascii=False) if isinstance(evidence, Mapping) else "",
     )
 
 

@@ -25,7 +25,7 @@ from decisionnode_msgs.srv import DecideOnce
 from .engine import ApiKeyError, DecisionEngine, Outcome, error_outcome, read_api_key, reply_outcome
 from .gate import FrameGate
 from .images import ImageError, compressed_bytes, raw_to_jpeg
-from .questions import QuestionError, parse_questions
+from .questions import BoosterError, QuestionError, parse_boosters, parse_questions
 
 DEFAULTS: Dict[str, Any] = {
     "image_topic": "image",
@@ -70,7 +70,9 @@ class DecisionNodeRos(Node):
         self._threads: List[threading.Thread] = []
         self.gate: Optional[FrameGate] = None
         self.p = {name: self._param(name, default) for name, default in DEFAULTS.items()}
-        self.p["boosters"] = [b for b in self.p["boosters"] if b]
+        self.p["boosters"] = parse_boosters(self.p["boosters"])
+        if self.p["boosters"] and self.p["session_mode"]:
+            raise BoosterError("boosters cannot be used with session_mode: a live session takes no boosters")
         prefixed = self.get_parameters_by_prefix("questions")
         self.ids, self.questions = parse_questions({name: param.value for name, param in prefixed.items()})
 
@@ -259,6 +261,7 @@ class DecisionNodeRos(Node):
         msg.model = outcome.model
         msg.latency_ms = outcome.latency_ms
         msg.cost_usd = outcome.cost_usd
+        msg.evidence_json = outcome.evidence_json
         msg.error_type = outcome.error_type
         msg.error_message = outcome.error_message
         msg.frames_dropped = int(dropped)
@@ -289,7 +292,7 @@ def main(args: Optional[List[str]] = None) -> None:
     rclpy.init(args=args)
     try:
         node = DecisionNodeRos()
-    except (ApiKeyError, QuestionError, ValueError) as exc:
+    except (ApiKeyError, QuestionError, BoosterError, ValueError) as exc:
         rclpy.logging.get_logger("decisionnode").fatal(str(exc))
         rclpy.try_shutdown()
         raise SystemExit(1) from None

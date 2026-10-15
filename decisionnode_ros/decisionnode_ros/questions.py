@@ -14,7 +14,8 @@ Each question lives under ``questions.<id>`` in the node's parameters, and
         options: [none, fire, smoke, water]
 """
 
-from typing import Any, Dict, List, Mapping, Tuple
+import json
+from typing import Any, Dict, List, Mapping, Sequence, Tuple
 
 import decisionnode as dn
 
@@ -23,6 +24,36 @@ TYPES = ("truth", "choice", "score", "number", "point", "box")
 
 class QuestionError(ValueError):
     """A question the parameters describe that cannot be asked."""
+
+
+class BoosterError(ValueError):
+    """A booster the parameters describe that cannot be sent."""
+
+
+def parse_boosters(entries: Sequence[str]) -> List[Any]:
+    """Return the boosters to send, in order, from the ``boosters`` parameter.
+
+    Each entry is a booster's name (``bynn_depth``), or a JSON object in the API's form
+    for a booster with settings (``{"name": "bynn_segment", "options": {"prompt":
+    ["purple gate"]}}``). Empty entries are left out. Which boosters exist and what their
+    settings may be is the API's to judge.
+    """
+    boosters: List[Any] = []
+    for entry in entries:
+        text = entry.strip()
+        if not text:
+            continue
+        if not text.startswith("{"):
+            boosters.append(text)
+            continue
+        try:
+            booster = json.loads(text)
+        except ValueError as exc:
+            raise BoosterError("boosters: %s is not a JSON object: %s" % (text, exc)) from None
+        if not isinstance(booster, dict) or not isinstance(booster.get("name"), str) or not booster["name"]:
+            raise BoosterError('boosters: %s needs a "name"' % text)
+        boosters.append(booster)
+    return boosters
 
 
 def parse_questions(params: Mapping[str, Any]) -> Tuple[List[str], Dict[str, Any]]:

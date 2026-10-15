@@ -102,6 +102,13 @@ def test_decide_once_answers_the_image_given(ros, api, monkeypatch):
         probe.destroy_node()
 
 
+def test_boosters_in_session_mode_refuse_to_start(ros, api, monkeypatch):
+    from decisionnode_ros.questions import BoosterError
+
+    with pytest.raises(BoosterError, match="session_mode"):
+        make_node(api, monkeypatch, session_mode=True, boosters=["bynn_depth"])
+
+
 def test_no_key_refuses_to_start(ros, api, monkeypatch):
     monkeypatch.delenv("DECISIONNODE_API_KEY", raising=False)
     from decisionnode_ros.engine import ApiKeyError
