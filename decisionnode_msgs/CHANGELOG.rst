@@ -2,8 +2,8 @@
 Changelog for package decisionnode_msgs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.2.0 (2026-10-20)
+------------------
 * ``Decision.evidence_json``: the boosters' readings exactly as the API sent them, as JSON.
 
 0.1.1 (2026-10-13)

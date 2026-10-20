@@ -2,7 +2,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>decisionnode_ros</name>
-  <version>0.1.1</version>
+  <version>0.2.0</version>
   <description>DecisionNode for ROS 2. DecisionNode is a decision engine: this node asks it typed questions about the frames on an image topic and publishes the answers as decisionnode_msgs/Decision.</description>
   <maintainer email="hello@bynn.com">Bynn Intelligence, Inc.</maintainer>
   <license>MIT</license>
