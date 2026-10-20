@@ -93,6 +93,55 @@ def test_booster_settings_are_sent_and_their_readings_come_back(api):
     assert list(json.loads(outcome.evidence_json)) == ["bynn_depth", "bynn_segment"]  # the request's order
 
 
+KNOWLEDGE = {
+    "collection": "col_manuals", "collection_name": "Operating manuals", "corpus": {"version": 12},
+    "query": {"source": "auto", "tokens": 9}, "budget": {"mode": "auto", "tokens": 800, "entry": "short", "cause": None},
+    "scope": {"key": "model", "value": "ur10e"}, "warnings": [],
+    "passages": [
+        {"n": 1, "pinned": True, "item": "itm_estop", "chunk": 0, "byte_start": 0, "byte_end": 212,
+         "reference": "safety-1", "title": "Emergency stop", "heading": "Before any motion", "tokens": 48,
+         "score": None, "lexical": False, "rendered": True},
+        {"n": 2, "pinned": False, "item": "itm_gripper", "chunk": 3, "byte_start": 1840, "byte_end": 2311,
+         "reference": None, "title": "UR10e gripper", "heading": "Payload limits", "tokens": 97,
+         "score": 0.8123, "lexical": False, "rendered": True},
+    ],
+    "omitted": {"below_min_score": 2}, "pending_items": 0, "search": {"plan": "hybrid", "candidates": 24, "fallback": False},
+    "truncated": False,
+}
+
+
+def test_the_knowledge_booster_is_sent_and_its_passages_come_back(api):
+    evidence = {"knowledge": {"version": "knowledge-v1", "status": "ok", "latency_ms": 31, "billed_calls": 1,
+                              "results": [KNOWLEDGE]}}
+    api.body = dict(api.body, evidence=evidence)
+    knowledge = {"name": "knowledge", "require": True, "options": {"collection": "col_manuals", "scope": "ur10e", "top_k": 4}}
+    outcome = engine(api, boosters=["bynn_depth", knowledge]).decide(FRAME)
+    assert api.requests[0]["body"]["boosters"] == ["bynn_depth", knowledge]
+    assert outcome.ok and json.loads(outcome.evidence_json) == evidence  # as received, nothing dropped
+    passages = json.loads(outcome.evidence_json)["knowledge"]["results"][0]["passages"]
+    assert [(p["n"], p["title"], p["heading"]) for p in passages] == [
+        (1, "Emergency stop", "Before any motion"), (2, "UR10e gripper", "Payload limits")]
+
+
+def test_the_boosters_can_change_between_requests(api):
+    e = engine(api, boosters=[{"name": "knowledge", "options": {"collection": "col_manuals", "scope": "ur10e"}}])
+    e.decide(FRAME)
+    e.set_boosters([{"name": "knowledge", "options": {"collection": "col_manuals", "scope": "ur5e"}}])
+    e.decide(FRAME)
+    e.set_boosters([])
+    e.decide(FRAME)
+    sent = [r["body"].get("boosters") for r in api.requests]
+    assert sent[0][0]["options"]["scope"] == "ur10e" and sent[1][0]["options"]["scope"] == "ur5e" and sent[2] is None
+
+
+def test_a_required_knowledge_base_with_nothing_ready_is_an_outcome(api):
+    api.status = 409
+    api.body = {"detail": {"error_type": "knowledge_collection_empty", "message": "The knowledge base has no ready document.",
+                           "details": {"items": 0, "failed": 0}}}
+    outcome = engine(api, boosters=[{"name": "knowledge", "require": True, "options": {"collection": "col_manuals"}}]).decide(FRAME)
+    assert not outcome.ok and outcome.error_type == "knowledge_collection_empty"
+
+
 def test_without_boosters_there_is_no_evidence(api):
     outcome = engine(api).decide(FRAME)
     assert "boosters" not in api.requests[0]["body"]

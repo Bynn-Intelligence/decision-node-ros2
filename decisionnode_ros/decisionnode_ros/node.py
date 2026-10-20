@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional
 
 import decisionnode as dn
 import rclpy
+from rcl_interfaces.msg import SetParametersResult
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
@@ -25,7 +26,7 @@ from decisionnode_msgs.srv import DecideOnce
 from .engine import ApiKeyError, DecisionEngine, Outcome, error_outcome, read_api_key, reply_outcome
 from .gate import FrameGate
 from .images import ImageError, compressed_bytes, raw_to_jpeg
-from .questions import BoosterError, QuestionError, parse_boosters, parse_questions
+from .questions import BoosterError, QuestionError, parse_boosters, parse_knowledge, parse_questions, with_knowledge
 
 DEFAULTS: Dict[str, Any] = {
     "image_topic": "image",
@@ -71,7 +72,8 @@ class DecisionNodeRos(Node):
         self.gate: Optional[FrameGate] = None
         self.p = {name: self._param(name, default) for name, default in DEFAULTS.items()}
         self.p["boosters"] = parse_boosters(self.p["boosters"])
-        if self.p["boosters"] and self.p["session_mode"]:
+        boosters = with_knowledge(self.p["boosters"], parse_knowledge(self._knowledge_params()))
+        if boosters and self.p["session_mode"]:
             raise BoosterError("boosters cannot be used with session_mode: a live session takes no boosters")
         prefixed = self.get_parameters_by_prefix("questions")
         self.ids, self.questions = parse_questions({name: param.value for name, param in prefixed.items()})
@@ -83,8 +85,11 @@ class DecisionNodeRos(Node):
         self.client = dn.DecisionNode(**options)
         del key
         self.engine = DecisionEngine(
-            self.client, self.ids, self.questions, self.p["model"], self.p["boosters"], self.p["image_id"]
+            self.client, self.ids, self.questions, self.p["model"], boosters, self.p["image_id"]
         )
+        # knowledge.* may change while the node runs (a new mission, another robot model):
+        # the next request sends the new booster, and a change that cannot be sent is refused.
+        self.add_on_set_parameters_callback(self._on_set_parameters)
 
         self.publisher = self.create_publisher(Decision, self.p["decision_topic"], 10)
         self.gate = FrameGate(float(self.p["max_rate_hz"]), int(self.p["max_in_flight"]))
@@ -116,6 +121,23 @@ class DecisionNodeRos(Node):
         if not self.has_parameter(name):
             self.declare_parameter(name, default)
         return self.get_parameter(name).value
+
+    def _knowledge_params(self) -> Dict[str, Any]:
+        return {name: param.value for name, param in self.get_parameters_by_prefix("knowledge").items()}
+
+    def _on_set_parameters(self, params: List[Any]) -> SetParametersResult:
+        changed = {p.name[len("knowledge."):]: p.value for p in params if p.name.startswith("knowledge.")}
+        if not changed:
+            return SetParametersResult(successful=True)
+        try:
+            knowledge = parse_knowledge(dict(self._knowledge_params(), **changed))
+            boosters = with_knowledge(self.p["boosters"], knowledge)
+            if boosters and self.p["session_mode"]:
+                raise BoosterError("knowledge cannot be used with session_mode: a live session takes no boosters")
+        except BoosterError as exc:
+            return SetParametersResult(successful=False, reason=str(exc))
+        self.engine.set_boosters(boosters)
+        return SetParametersResult(successful=True)
 
     # ---------------------------------------------------------------- inputs
 

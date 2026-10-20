@@ -215,6 +215,88 @@ so `max_rate_hz` sets how many you pay for. A live session (`session_mode`) take
 boosters: the node refuses to start with both. Every booster is listed in the
 [boosters documentation](https://decisionnode.com/docs/concepts/boosters).
 
+## Knowledge: your own manuals and rules
+
+The `knowledge` booster gives each decision the passages of your own documents that apply
+to it: an operating manual, a site's procedures, the limits of a payload. Rules you pin
+are always given; then the passages that best match the questions and the state, within
+a token budget. The model applies them as facts and rules, and the passages it was given
+come back in `evidence_json`, cited by document, chunk and byte offsets.
+
+**Make a knowledge base once, from a workstation.** Documents are added with a Full access
+key in the [console](https://decisionnode.com/console) or with the `dn` CLI, never from the
+robot. For a fleet of several models, give the knowledge base a scope key, `model`, and
+tag each model's manual with it; a document without the key applies to every model:
+
+```sh
+dn collections create "Robot manuals" --type text --scope-key model
+dn documents add col_... safety-rules.md --pinned --wait            # every model, always given
+dn documents add col_... ur10e-manual.pdf --metadata '{"model": "ur10e"}'
+dn documents add col_... ur5e-manual.pdf --metadata '{"model": "ur5e"}'
+dn documents wait col_...
+```
+
+PDF, Word, PowerPoint, Excel, HTML, Markdown, text and scanned pages are taken (50 MB a
+file, 100 pages a PDF, 512 KiB of text once extracted). A file is converted to text, only
+the text is kept once it is ready, and the original is deleted.
+
+**Name it in the node's parameters.** The robot's Decisions-only key may use it:
+
+```yaml
+decisionnode:
+  ros__parameters:
+    image_topic: /camera/image_raw
+    state_topic: /robot/state          # the task in the state sharpens the passages found
+    knowledge:
+      collection: col_...              # the knowledge base's id
+      scope: ur10e                     # this robot's model: its manual and the global rules
+      top_k: 4                         # the most passages found by meaning, pins not counted
+      require: true                    # no decision without the knowledge base
+    questions:
+      ids: [payload_ok]
+      payload_ok:
+        type: truth
+        instructions: Is the load in the gripper within this robot's payload limits?
+```
+
+The other options are `query` (replaces the query built from the questions and the state),
+`max_tokens` (`auto`, or 128 to 8192), `pinned` (`false` leaves pinned documents out),
+`min_score` (0 to 1), `match` and `filter` (JSON text, on the documents' metadata) and
+`timeout_ms`. `include_text` needs a Full access key, so a robot leaves it off. Each
+`knowledge.` parameter can change while the node runs, for a new mission or another model;
+the next request uses it, and a change that cannot be sent is refused:
+
+```sh
+ros2 param set /decisionnode knowledge.scope ur5e
+```
+
+**Read the citations** in `evidence_json`, under `knowledge`, pinned passages first:
+
+```python
+import json
+
+def on_decision(msg):
+    if not msg.ok:
+        return
+    evidence = json.loads(msg.evidence_json or "{}")
+    reading = ((evidence.get("knowledge") or {}).get("results") or [{}])[0]
+    for p in reading.get("passages", []):
+        print(p["n"], p["title"], p["heading"], p["item"], p["chunk"], p["byte_start"], p["byte_end"])
+```
+
+`item` and `chunk` name the document and its part. `byte_start` and `byte_end` are UTF-8
+byte offsets, end exclusive, into the document's stored text, which the SDKs and `dn
+documents get --text` return. `scope` echoes the scope used, and `warnings` holds
+`scope_not_named` when the knowledge base has a scope key and no `scope` was given.
+
+With `require: true`, a knowledge base with no document ready publishes `ok: false` with
+`knowledge_collection_empty`, and one whose documents are still being read
+`booster_unavailable`: the node keeps going and the next frame tries again. Each request
+that names knowledge is one knowledge call, so `max_rate_hz` sets how many you pay for, as
+for every booster; a live session (`session_mode`) takes none. The knowledge base gives
+the model your rules; it does not make a decision a safety control. The
+[safety section](#safety-decisions-never-the-controller) holds for these answers too.
+
 ## Parameters
 
 | Parameter | Default | Meaning |
@@ -225,6 +307,7 @@ boosters: the node refuses to start with both. Every booster is listed in the
 | `decision_topic` | `decision` | Where decisions are published. |
 | `model` | `decisionnode-flash` | The model to ask. |
 | `boosters` | none | Boosters to add, each a name (`bynn_depth`) or a JSON object for one with settings. See [Boosters](#boosters-for-robots-and-drones). |
+| `knowledge.collection` | none | A knowledge base to read, with `knowledge.scope`, `knowledge.top_k`, `knowledge.require` and the other options. See [Knowledge](#knowledge-your-own-manuals-and-rules). |
 | `max_rate_hz` | `1.0` | The most decisions a second. |
 | `max_in_flight` | `1` | Requests running at once. |
 | `timeout_s` | `10.0` | The time one request may take. |

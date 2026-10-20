@@ -13,6 +13,11 @@ decisionnode:
                                        # with settings, such as
                                        # '{"name": "bynn_segment", "options": {"prompt": "purple gate"}}'
                                        # (see the README; not with session_mode)
+    # knowledge:                       # the knowledge booster: passages of your own documents
+    #   collection: col_...            # the knowledge base's id (see the README's Knowledge)
+    #   scope: ur10e                   # the value of its scope key, such as the robot's model
+    #   top_k: 4
+    #   require: true                  # no decision without the knowledge base's rules
     max_rate_hz: 1.0                   # at most one decision a second
     max_in_flight: 1                   # requests running at once
     timeout_s: 10.0

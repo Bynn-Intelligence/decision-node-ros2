@@ -4,7 +4,9 @@ import pytest
 # it is missing (as on a build from rosdep keys alone), these tests are skipped. Nothing
 # here raises on import, since some test runners import every module to collect it.
 try:
-    from decisionnode_ros.questions import BoosterError, QuestionError, parse_boosters, parse_questions
+    from decisionnode_ros.questions import (
+        BoosterError, QuestionError, parse_boosters, parse_knowledge, parse_questions, with_knowledge,
+    )
 except ImportError:
     HAVE_SDK = False
 else:
@@ -59,3 +61,49 @@ def test_boosters_by_name_and_with_settings():
 def test_bad_boosters_are_refused(entry, words):
     with pytest.raises(BoosterError, match=words):
         parse_boosters([entry])
+
+
+def test_knowledge_from_its_parameters():
+    params = {
+        "collection": "col_manuals", "scope": "ur10e", "top_k": 4, "require": True, "query": "",
+        "max_tokens": "auto", "pinned": False, "min_score": 0.2, "include_text": True,
+        "match": '{"site": "plant-2"}', "filter": '{"key": "section", "op": "in", "value": ["safety", "maintenance"]}',
+        "timeout_ms": 400,
+    }
+    assert parse_knowledge(params) == {
+        "name": "knowledge",
+        "require": True,
+        "options": {
+            "collection": "col_manuals", "scope": "ur10e", "match": {"site": "plant-2"},
+            "filter": {"key": "section", "op": "in", "value": ["safety", "maintenance"]}, "top_k": 4,
+            "max_tokens": "auto", "pinned": False, "min_score": 0.2, "include_text": True, "timeout_ms": 400,
+        },
+    }
+
+
+def test_knowledge_with_the_collection_alone_and_off():
+    assert parse_knowledge({"collection": "col_manuals"}) == {"name": "knowledge", "options": {"collection": "col_manuals"}}
+    assert parse_knowledge({"collection": "col_manuals", "require": False}) == {
+        "name": "knowledge", "options": {"collection": "col_manuals"}}
+    assert parse_knowledge({}) is None
+    assert parse_knowledge({"collection": "", "scope": "ur10e"}) is None  # cleared on a running node
+
+
+@pytest.mark.parametrize("params, words", [
+    ({"scope": "ur10e"}, "knowledge.collection is required"),
+    ({"collection": "col_manuals", "topk": 3}, "knowledge.topk is not a knowledge option"),
+    ({"collection": "col_manuals", "filter": "{label"}, "knowledge.filter is not JSON"),
+    ({"collection": 7}, "knowledge base's id"),
+])
+def test_bad_knowledge_is_refused(params, words):
+    with pytest.raises(BoosterError, match=words):
+        parse_knowledge(params)
+
+
+def test_knowledge_goes_after_the_other_boosters_once():
+    knowledge = parse_knowledge({"collection": "col_manuals"})
+    assert with_knowledge(["bynn_depth"], knowledge) == ["bynn_depth", knowledge]
+    assert with_knowledge(["bynn_depth"], None) == ["bynn_depth"]
+    for named in ("knowledge", {"name": "knowledge", "options": {"collection": "col_x"}}):
+        with pytest.raises(BoosterError, match="keep one"):
+            with_knowledge([named], knowledge)

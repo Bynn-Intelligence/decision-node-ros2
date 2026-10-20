@@ -15,7 +15,7 @@ Each question lives under ``questions.<id>`` in the node's parameters, and
 """
 
 import json
-from typing import Any, Dict, List, Mapping, Sequence, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 import decisionnode as dn
 
@@ -54,6 +54,62 @@ def parse_boosters(entries: Sequence[str]) -> List[Any]:
             raise BoosterError('boosters: %s needs a "name"' % text)
         boosters.append(booster)
     return boosters
+
+
+# The knowledge booster's options, in the order they are sent. ``match`` and ``filter``
+# are JSON values, which a ROS parameter cannot hold, so they are given as JSON text.
+KNOWLEDGE_OPTIONS = (
+    "query", "scope", "match", "filter", "top_k", "max_tokens", "pinned", "min_score", "include_text", "timeout_ms",
+)
+KNOWLEDGE_JSON = ("match", "filter")
+
+
+def parse_knowledge(params: Mapping[str, Any]) -> Optional[Dict[str, Any]]:
+    """Return the ``knowledge`` booster to send, or ``None``, from the ``knowledge.``
+    parameters.
+
+    ``params`` maps a parameter's name below ``knowledge.`` (``scope``) to its value.
+    ``collection`` is the knowledge base's id; empty, no knowledge is sent. Each option
+    is sent only when given, and an empty string counts as not given, so a running node
+    can clear one. Whether an option's value is right is the API's to judge.
+    """
+    unknown = sorted(k for k in params if k not in ("collection", "require") + KNOWLEDGE_OPTIONS)
+    if unknown:
+        raise BoosterError("knowledge.%s is not a knowledge option; the options are collection, require, %s"
+                           % (unknown[0], ", ".join(KNOWLEDGE_OPTIONS)))
+    if params and "collection" not in params:
+        raise BoosterError("knowledge.collection is required: the id of the knowledge base, such as col_...")
+    given = {k: v for k, v in params.items() if not (isinstance(v, str) and not v.strip())}
+    collection = given.get("collection")
+    if collection is None:
+        return None
+    if not isinstance(collection, str):
+        raise BoosterError("knowledge.collection must be a knowledge base's id, such as col_...")
+    options: Dict[str, Any] = {"collection": collection.strip()}
+    for name in KNOWLEDGE_OPTIONS:
+        if name not in given:
+            continue
+        value = given[name]
+        if name in KNOWLEDGE_JSON and isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except ValueError as exc:
+                raise BoosterError("knowledge.%s is not JSON: %s" % (name, exc)) from None
+        options[name] = value
+    booster: Dict[str, Any] = {"name": "knowledge"}
+    if given.get("require") is True:
+        booster["require"] = True
+    booster["options"] = options
+    return booster
+
+
+def with_knowledge(boosters: Sequence[Any], knowledge: Optional[Dict[str, Any]]) -> List[Any]:
+    """The boosters to send: those of ``boosters`` and, last, the ``knowledge.`` one."""
+    if knowledge is None:
+        return list(boosters)
+    if any(b == "knowledge" or (isinstance(b, Mapping) and b.get("name") == "knowledge") for b in boosters):
+        raise BoosterError("knowledge is named in boosters and in the knowledge parameters: keep one")
+    return list(boosters) + [knowledge]
 
 
 def parse_questions(params: Mapping[str, Any]) -> Tuple[List[str], Dict[str, Any]]:

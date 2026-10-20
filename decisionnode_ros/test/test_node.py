@@ -109,6 +109,38 @@ def test_boosters_in_session_mode_refuse_to_start(ros, api, monkeypatch):
         make_node(api, monkeypatch, session_mode=True, boosters=["bynn_depth"])
 
 
+def test_knowledge_parameters_are_sent_and_can_change_while_running(ros, api, monkeypatch):
+    node = make_node(api, monkeypatch, **{
+        "boosters": ["bynn_depth"], "knowledge.collection": "col_manuals", "knowledge.scope": "ur10e",
+        "knowledge.top_k": 4, "knowledge.require": True,
+    })
+    try:
+        node.engine.decide(FRAME)
+        assert api.requests[-1]["body"]["boosters"] == [
+            "bynn_depth",
+            {"name": "knowledge", "require": True, "options": {"collection": "col_manuals", "scope": "ur10e", "top_k": 4}},
+        ]
+        result = node.set_parameters([Parameter("knowledge.scope", value="ur5e")])[0]
+        assert result.successful
+        node.engine.decide(FRAME)
+        assert api.requests[-1]["body"]["boosters"][1]["options"]["scope"] == "ur5e"
+        result = node.set_parameters([Parameter("knowledge.filter", value="{not json")])[0]
+        assert not result.successful and "knowledge.filter is not JSON" in result.reason
+        result = node.set_parameters([Parameter("knowledge.collection", value="")])[0]
+        assert result.successful
+        node.engine.decide(FRAME)
+        assert api.requests[-1]["body"]["boosters"] == ["bynn_depth"]
+    finally:
+        node.destroy_node()
+
+
+def test_knowledge_in_session_mode_refuses_to_start(ros, api, monkeypatch):
+    from decisionnode_ros.questions import BoosterError
+
+    with pytest.raises(BoosterError, match="session_mode"):
+        make_node(api, monkeypatch, session_mode=True, **{"knowledge.collection": "col_manuals"})
+
+
 def test_no_key_refuses_to_start(ros, api, monkeypatch):
     monkeypatch.delenv("DECISIONNODE_API_KEY", raising=False)
     from decisionnode_ros.engine import ApiKeyError

@@ -139,6 +139,10 @@ class DecisionEngine:
         self.boosters = list(boosters) or None
         self.image_id = image_id
 
+    def set_boosters(self, boosters: Sequence[Any]) -> None:
+        """The boosters of every request from now on; one already sent keeps its own."""
+        self.boosters = list(boosters) or None
+
     def decide(self, image: Optional[bytes], state: Any = None) -> Outcome:
         images = [dn.Image(self.image_id, data=image)] if image else None
         kwargs: Dict[str, Any] = {"questions": self.questions, "images": images, "model": self.model, "boosters": self.boosters}

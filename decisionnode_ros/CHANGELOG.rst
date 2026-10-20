@@ -8,6 +8,9 @@ Forthcoming
 * The boosters' readings are published in ``Decision.evidence_json``, exactly as the API sent them.
 * The README shows Depth Vision (``bynn_depth``) and Segment Vision (``bynn_segment``) for robots and drones.
 * ``boosters`` with ``session_mode`` refuse to start: a live session takes no boosters.
+* Knowledge: the ``knowledge.`` parameters (``collection``, ``scope``, ``top_k``, ``require``, ``query``, ``max_tokens``, ``pinned``, ``min_score``, ``match``, ``filter``, ``include_text``, ``timeout_ms``) send the ``knowledge`` booster with every request, so each decision is given the passages of your own documents that apply to it. Its reading, with the cited passages, comes back in ``Decision.evidence_json`` under ``knowledge``.
+* The ``knowledge.`` parameters can change while the node runs (``ros2 param set``), for a new mission or another robot model; a change that cannot be sent is refused and the node keeps the one it had.
+* The README shows an operating manual scoped by robot model.
 
 0.1.1 (2026-10-13)
 ------------------
